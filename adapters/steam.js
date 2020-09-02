@@ -160,7 +160,7 @@ const getInstalledGames = async () => {
             fs.readdir(folder, (err, files) => {
                 if(err || !files)
                 {
-                    resolve([]);
+                    return resolve([]);
                 }
                 let regex = /appmanifest_(\d+)\.acf/;
                 files.forEach((file) => {
