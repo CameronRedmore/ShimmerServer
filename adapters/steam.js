@@ -158,7 +158,7 @@ const getInstalledGames = async () => {
         {
             let games = [];
             fs.readdir(folder, (err, files) => {
-                if(err)
+                if(err || !files)
                 {
                     resolve([]);
                 }
