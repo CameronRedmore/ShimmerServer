@@ -1,0 +1,9 @@
+{
+    "SteamDirectory": "C:\\Program Files (x86)\\Steam\\",
+
+    "SteamCacheFile": "./steamcache.json",
+    
+    "Port": 2606,
+
+    "QueueInterval": 250
+}
