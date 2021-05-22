@@ -1,18 +1,19 @@
 const url = require('url');
 
+const audio = require('./audio');
+
 const express = require('express');
 const app = express();
 
-const config = require('./config');
+require('dotenv').config();
 
-const steam = require('./adapters/steam');
+console.log(process.env);
+
+const playnite = require('./adapters/playnite')(app);
 const adapters = {};
-adapters[steam.name] = steam;
+adapters[playnite.name] = playnite;
 
 let games = [];
-
-var glob = require( 'glob' ), path = require( 'path' );
-const { isRegExp } = require('util');
 
 let refreshAdapters = async () => {
     games = [];
@@ -49,7 +50,29 @@ app.use(function(request, response, next)
     }
 });
 
+app.use(async (req, res, next) => {
+    console.log(req.headers.authorization, process.env.PASSWORD)
+    if(!req.headers.authorization)
+    {
+        return res.status(401).send();
+    }
+    if(req.headers.authorization == process.env.PASSWORD)
+    {
+        next();
+    }
+    else
+    {
+        return res.status(401).send();
+    }
+});
+
 app.use(express.json());
+
+app.get('/authenticate', async (req, res, next) => {
+    audio.authenticateIp(req.ip);
+
+    res.status(200).send();
+});
 
 app.get('/games', async (req, res, next) => {
     await new Promise((resolve, reject) => {
@@ -67,11 +90,11 @@ app.get('/games', async (req, res, next) => {
 app.post('/launch', async (req, res, next) => {
     let game = req.body;
 
-    adapters[game.provider].runGame(game.id);
+    adapters['Playnite'].runGame(game.Id);
 
     res.json({
         status: 200,
-        message: game.installed ? 'Game Launched!' : 'Game installing. You will be redirected to Moonlight where you will likely need to complete the installation.'
+        message: game.IsInstalled ? 'Game Launched!' : 'Game installing. You will be redirected to Moonlight where you will likely need to complete the installation.'
     })
 });
 
@@ -80,10 +103,26 @@ app.post('/refresh', async (req, res, next) => {
     res.status(200).json(games);
 })
 
-app.listen(config.Port, async () => {
-    console.log("Refreshing Games Lists");
-    await refreshAdapters();
-    console.log("Game Server Running!");
 
-    setInterval(refreshAdapters, 1000 * 60 * 15);
+const natUpnp = require('nat-upnp');
+
+const client = natUpnp.createClient();
+
+client.portMapping({
+    public: 2606,
+    private: 2606,
+    ttl: 1
+}, function(error) {
+    if(error)
+    {
+        console.error("Could not automatically forward port!");
+    }
+
+    app.listen(2606, async () => {
+        console.log("Refreshing Games Lists");
+        await refreshAdapters();
+        console.log("Game Server Running!");
+    
+        setInterval(refreshAdapters, 1000 * 60 * 15);
+    });
 });
